@@ -1,13 +1,16 @@
 require('dotenv').config();
 const { google } = require('googleapis');
+const fs = require('fs');
 
 // --- Authentication ---
-// .env 파일에서 JSON 문자열을 읽어와 파싱합니다.
-const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-if (!credentialsJson) {
-  throw new Error('The GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable is not set.');
+// google_auth.json 파일을 직접 읽어 인증합니다.
+let credentials;
+try {
+    const fileContent = fs.readFileSync('google_auth.json', 'utf8');
+    credentials = JSON.parse(fileContent);
+} catch (error) {
+    throw new Error(`Could not read or parse google_auth.json. Make sure the file exists and is valid JSON. Error: ${error.message}`);
 }
-const credentials = JSON.parse(credentialsJson);
 
 // 공식 라이브러리용 인증 객체를 생성합니다.
 const auth = new google.auth.GoogleAuth({
