@@ -17,13 +17,19 @@ async function runComplexLoad() {
     
     // 1. Get complex numbers from Google Sheets
     const complexNumbers = await getComplexNumbers();
-    await sendMessage(`총 ${complexNumbers.length}개의 단지 목록을 가져왔습니다.`);
     // const complexNumbers = ['1138']; // For testing a single complex
 
     if (!complexNumbers || complexNumbers.length === 0) {
       console.log('No complex numbers to process.');
+      await sendMessage('처리할 단지 목록이 없습니다.');
       return 'success';
     }
+
+    await sendMessage(`총 ${complexNumbers.length}개의 단지에 대한 수집을 시작합니다.`);
+
+    // Initialize counters
+    let processedComplexCount = 0;
+    let totalListingsCount = 0;
 
     // 2. Get DB connection
     connection = await pool.getConnection();
@@ -35,9 +41,7 @@ async function runComplexLoad() {
     // 3. Iterate through each complex number
     for (const [index, complexNo] of complexNumbers.entries()) {
       try {
-        const progressMessage = `단지 처리중: ${complexNo} (${index + 1}/${complexNumbers.length})`;
         console.log(`\nProcessing complex ${complexNo} (${index + 1}/${complexNumbers.length})`);
-        await sendMessage(progressMessage);
         await sleep(2000); // To avoid overwhelming the API
 
         // 4. Fetch articles from Naver API
@@ -87,11 +91,13 @@ async function runComplexLoad() {
         `;
         await connection.query(sql, [listingsToInsert]);
         console.log(`Successfully inserted ${listingsToInsert.length} listings for complex ${complexNo}.`);
-        await sendMessage(`✅ ${complexNo}: ${listingsToInsert.length}개 매물 저장 완료.`);
+        
+        // Increment counters
+        processedComplexCount++;
+        totalListingsCount += listingsToInsert.length;
 
       } catch (error) {
         console.error(`Error processing complex ${complexNo}:`, error);
-        await sendMessage(`❌ ${complexNo} 처리 중 오류 발생`);
         await sleep(5000); // Wait longer if an error occurs
         continue; // Continue to the next complex number
       }
@@ -119,11 +125,21 @@ async function runComplexLoad() {
 
         // 9. Update Google Sheets
         await updateSummarySheet(sheetData);
-        const endTime = new Date();
-        const durationInSeconds = Math.round((endTime - startTime) / 1000);
-        const durationFormatted = formatDuration(durationInSeconds);
-        await sendMessage(`🚀 데이터 수집 및 구글 시트 업데이트가 모두 완료되었습니다. (총 소요시간: ${durationFormatted})`);
     }
+
+    const endTime = new Date();
+    const durationInSeconds = Math.round((endTime - startTime) / 1000);
+    const durationFormatted = formatDuration(durationInSeconds);
+    
+    const summaryMessage = `
+🚀 데이터 수집 및 구글 시트 업데이트가 모두 완료되었습니다.
+- 총 처리 단지: ${processedComplexCount} / ${complexNumbers.length}개
+- 수집된 매물: ${totalListingsCount}개
+- 취합된 데이터: ${summaryRows.length}개
+- 총 소요시간: ${durationFormatted}
+    `.trim();
+
+    await sendMessage(summaryMessage);
 
     console.log('Complex load process finished successfully.');
     return 'success';

@@ -2,12 +2,24 @@ require('dotenv').config();
 const mysql = require('mysql2/promise');
 
 // 데이터베이스 연결 풀 생성
+// .env 파일에서 MODE 값 읽기 (기본값: DEV)
+const mode = process.env.MODE || 'DEV';
+
+// MODE 값에 따라 동적으로 데이터베이스 이름 설정
+const dbDatabase = process.env[`DB_DATABASE_${mode}`];
+
+if (!dbDatabase) {
+  console.error(`Database not found for MODE: ${mode}. Make sure DB_DATABASE_${mode} is set in your .env file.`);
+  process.exit(1); // 환경 변수가 없으면 프로세스 종료
+}
+
+// 데이터베이스 연결 풀 생성
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE,
+  database: dbDatabase,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0

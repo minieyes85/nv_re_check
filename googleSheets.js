@@ -19,7 +19,19 @@ const auth = new google.auth.GoogleAuth({
 });
 
 const sheets = google.sheets({ version: 'v4', auth });
-const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+
+// .env 파일에서 MODE 값 읽기 (기본값: DEV)
+const mode = process.env.MODE || 'DEV';
+
+// MODE 값에 따라 동적으로 구글 시트 관련 변수 설정
+const spreadsheetId = process.env[`GOOGLE_SHEET_ID_${mode}`];
+const complexListSheetName = process.env[`GOOGLE_SHEET_COMPLEX_LIST_${mode}`] || '수도권_test';
+const summarySheetName = process.env[`GOOGLE_SHEET_SUMMARY_${mode}`] || '수집요약_test';
+
+if (!spreadsheetId) {
+  console.error(`Google Sheet ID not found for MODE: ${mode}. Make sure GOOGLE_SHEET_ID_${mode} is set in your .env file.`);
+  process.exit(1);
+}
 
 
 // --- Functions ---
@@ -32,7 +44,7 @@ async function getComplexNumbers() {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: '수도권!E4:E', // E열 4행부터 끝까지 모든 데이터를 가져옵니다.
+      range: `${complexListSheetName}!E4:E`, // E열 4행부터 끝까지 모든 데이터를 가져옵니다.
     });
 
     const values = response.data.values;
@@ -89,7 +101,7 @@ async function updateSummarySheet(data) {
     // 3. 준비된 모든 데이터를 시트에 한 번에 추가합니다.
     await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: '수집요약!A1',
+      range: `${summarySheetName}!A1`,
       valueInputOption: 'USER_ENTERED',
       resource,
     });
