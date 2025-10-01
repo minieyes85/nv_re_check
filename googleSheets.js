@@ -1,4 +1,5 @@
 require('./config.js');
+const path = require('path');
 const { google } = require('googleapis');
 const fs = require('fs');
 
@@ -6,7 +7,8 @@ const fs = require('fs');
 // google_auth.json 파일을 직접 읽어 인증합니다.
 let credentials;
 try {
-    const fileContent = fs.readFileSync('google_auth.json', 'utf8');
+    const authFilePath = path.join(__dirname, 'google_auth.json');
+    const fileContent = fs.readFileSync(authFilePath, 'utf8');
     credentials = JSON.parse(fileContent);
 } catch (error) {
     throw new Error(`Could not read or parse google_auth.json. Make sure the file exists and is valid JSON. Error: ${error.message}`);
