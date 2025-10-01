@@ -1,7 +1,7 @@
 // 네이버 부동산 API의 원본 응답을 직접 확인하기 위한 테스트 파일입니다.
 // 사용법: 터미널에서 node napitest.js 실행
 
-require('dotenv').config();
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const axios = require('axios');
 
 // 테스트할 아파트 단지 번호 (예시: 래미안 원베일리, 127725)
