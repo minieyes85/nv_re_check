@@ -1,4 +1,4 @@
-require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+require('./config.js');
 const axios = require('axios');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;

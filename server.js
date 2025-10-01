@@ -1,4 +1,4 @@
-require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+require('./config.js');
 const express = require('express');
 const { initDatabase } = require('./database');
 const { runComplexLoad } = require('./mainTask');

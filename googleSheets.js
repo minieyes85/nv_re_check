@@ -1,4 +1,4 @@
-require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+require('./config.js');
 const { google } = require('googleapis');
 const fs = require('fs');
 

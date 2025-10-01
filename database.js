@@ -1,4 +1,4 @@
-require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+require('./config.js');
 const mysql = require('mysql2/promise');
 
 // 데이터베이스 연결 풀 생성

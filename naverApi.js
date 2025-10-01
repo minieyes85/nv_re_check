@@ -1,4 +1,4 @@
-require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+require('./config.js');
 const axios = require('axios');
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
