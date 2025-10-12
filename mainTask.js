@@ -148,10 +148,6 @@ async function runComplexLoad() {
 
   } catch (error) {
     logger.error('The entire complex load process failed:', error);
-    const endTime = new Date();
-    const durationInSeconds = Math.round((endTime - startTime) / 1000);
-    const durationFormatted = formatDuration(durationInSeconds);
-    await sendMessage(`🚨 전체 작업 실패: ${error.message} (총 소요시간: ${durationFormatted})`);
     return 'failed';
   } finally {
     if (connection) {
