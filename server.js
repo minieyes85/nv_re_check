@@ -1,5 +1,7 @@
 require('./config.js');
 const express = require('express');
+const path = require('path');
+const logger = require('./logger').child({ label: path.basename(__filename) });
 const { initDatabase } = require('./database');
 const { runComplexLoad } = require('./mainTask');
 
@@ -22,6 +24,7 @@ app.get('/status', (req, res) => {
 // 데이터 수집 시작 엔드포인트
 app.get('/complex_load', (req, res) => {
   if (isWorking) {
+    logger.warn('Attempted to start a task while another is already in progress.');
     return res.status(409).send({ message: 'A data collection task is already in progress.' });
   }
 
@@ -29,18 +32,18 @@ app.get('/complex_load', (req, res) => {
 
   // 백그라운드에서 비동기 작업 실행
   isWorking = true;
-  console.log('Starting background task for complex load...');
+  logger.info('Starting background task for complex load...');
   
   runComplexLoad()
     .then(result => {
-      console.log(`Background task finished with result: ${result}`);
+      logger.info(`Background task finished with result: ${result}`);
     })
     .catch(error => {
-      console.error('Background task failed:', error);
+      logger.error('Background task failed:', error);
     })
     .finally(() => {
       isWorking = false;
-      console.log('Background task completed. Status set to idle.');
+      logger.info('Background task completed. Status set to idle.');
     });
 });
 
@@ -52,10 +55,10 @@ async function startServer() {
     
     // 서버 리스닝 시작
     app.listen(PORT, () => {
-      console.log(`Server is running on http://localhost:${PORT}`);
+      logger.info(`Server is running on http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error('Failed to start server:', error);
     process.exit(1);
   }
 }

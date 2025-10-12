@@ -1,7 +1,8 @@
 require('./config.js');
 const mysql = require('mysql2/promise');
+const path = require('path');
+const logger = require('./logger').child({ label: path.basename(__filename) });
 
-// 데이터베이스 연결 풀 생성
 // .env 파일에서 MODE 값 읽기 (기본값: DEV)
 const mode = process.env.MODE || 'DEV';
 
@@ -9,7 +10,7 @@ const mode = process.env.MODE || 'DEV';
 const dbDatabase = process.env[`DB_DATABASE_${mode}`];
 
 if (!dbDatabase) {
-  console.error(`Database not found for MODE: ${mode}. Make sure DB_DATABASE_${mode} is set in your .env file.`);
+  logger.error(`Database not found for MODE: ${mode}. Make sure DB_DATABASE_${mode} is set in your .env file.`);
   process.exit(1); // 환경 변수가 없으면 프로세스 종료
 }
 
@@ -30,7 +31,7 @@ async function initDatabase() {
   let connection;
   try {
     connection = await pool.getConnection();
-    console.log("Successfully connected to the database.");
+    logger.info(`Successfully connected to the database: ${dbDatabase}`);
 
     // apartment_listings 테이블 생성 (존재하지 않을 경우)
     await connection.execute(`
@@ -54,7 +55,7 @@ async function initDatabase() {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
-    console.log("Table 'apartment_listings' is ready.");
+    logger.info("Table 'apartment_listings' is ready.");
 
     // sumToday 뷰 생성 (기존 뷰가 있으면 대체)
     await connection.execute(`
@@ -83,10 +84,11 @@ async function initDatabase() {
           areaName,
           tradeTypeName;
     `);
-    console.log("View 'sumToday' is ready.");
+    logger.info("View 'sumToday' is ready.");
 
   } catch (error) {
-    console.error('Database initialization failed:', error);
+    logger.error('Database initialization failed:', error);
+    throw error; // Re-throw to allow server start-up to fail
   } finally {
     if (connection) {
       connection.release();

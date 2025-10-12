@@ -2,19 +2,19 @@ require('./config.js');
 const path = require('path');
 const { google } = require('googleapis');
 const fs = require('fs');
+const logger = require('./logger').child({ label: path.basename(__filename) });
 
 // --- Authentication ---
-// google_auth.json 파일을 직접 읽어 인증합니다.
 let credentials;
 try {
     const authFilePath = path.join(__dirname, 'google_auth.json');
     const fileContent = fs.readFileSync(authFilePath, 'utf8');
     credentials = JSON.parse(fileContent);
 } catch (error) {
-    throw new Error(`Could not read or parse google_auth.json. Make sure the file exists and is valid JSON. Error: ${error.message}`);
+    logger.error(`Could not read or parse google_auth.json. Make sure the file exists and is valid JSON. Error: ${error.message}`);
+    throw error; // Re-throw after logging
 }
 
-// 공식 라이브러리용 인증 객체를 생성합니다.
 const auth = new google.auth.GoogleAuth({
   credentials,
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -22,70 +22,58 @@ const auth = new google.auth.GoogleAuth({
 
 const sheets = google.sheets({ version: 'v4', auth });
 
-// .env 파일에서 MODE 값 읽기 (기본값: DEV)
 const mode = process.env.MODE || 'DEV';
-
-// MODE 값에 따라 동적으로 구글 시트 관련 변수 설정
 const spreadsheetId = process.env[`GOOGLE_SHEET_ID_${mode}`];
 const complexListSheetName = process.env[`GOOGLE_SHEET_COMPLEX_LIST_${mode}`] || '수도권_test';
 const summarySheetName = process.env[`GOOGLE_SHEET_SUMMARY_${mode}`] || '수집요약_test';
 
 if (!spreadsheetId) {
-  console.error(`Google Sheet ID not found for MODE: ${mode}. Make sure GOOGLE_SHEET_ID_${mode} is set in your .env file.`);
+  logger.error(`Google Sheet ID not found for MODE: ${mode}. Make sure GOOGLE_SHEET_ID_${mode} is set in your .env file.`);
   process.exit(1);
 }
 
 
 // --- Functions ---
 
-/**
- * '수도권' 시트에서 아파트 단지 번호 목록을 가져옵니다.
- */
 async function getComplexNumbers() {
-  console.log("Using official googleapis library to get complex numbers...");
+  logger.info(`Fetching complex numbers from sheet: ${complexListSheetName}`);
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `${complexListSheetName}!E4:E`, // E열 4행부터 끝까지 모든 데이터를 가져옵니다.
+      range: `${complexListSheetName}!E4:E`,
     });
 
     const values = response.data.values;
     if (!values || values.length === 0) {
-      console.log('No complex numbers found in Google Sheet.');
+      logger.warn('No complex numbers found in Google Sheet.');
       return [];
     }
 
-    // 2D 배열을 1D로 만들고, 빈 값 제거 후 Set을 사용해 중복을 제거합니다.
     const complexNumbers = new Set(values.flat().filter(Boolean));
     const result = Array.from(complexNumbers);
-    console.log(`Found ${result.length} unique complex numbers.`);
+    logger.info(`Found ${result.length} unique complex numbers.`);
     return result;
 
   } catch (error) {
-    console.error('Error reading from Google Sheets with googleapis:', error.message);
+    logger.error('Error reading complex numbers from Google Sheets:', error);
     throw error;
   }
 }
 
-/**
- * '수집요약' 시트에 요약 데이터를 업데이트합니다.
- */
 async function updateSummarySheet(data) {
-  console.log("Using official googleapis library to update summary sheet...");
+  logger.info(`Updating summary sheet: ${summarySheetName}`);
   try {
-    // 1. 시트의 모든 내용을 먼저 삭제합니다.
     await sheets.spreadsheets.values.clear({
       spreadsheetId,
-      range: '수집요약',
+      range: summarySheetName,
     });
-    console.log("Cleared '수집요약' sheet.");
+    logger.info(`Cleared sheet: ${summarySheetName}`);
 
     if (data.length === 0) {
-        console.log('No summary data to write.');
+        logger.info('No summary data to write.');
         return;
     }
 
-    // 2. 헤더와 데이터 행들을 준비합니다.
     const header = ['단지번호', '거래유형', '최고가', '최저가', '면적', '날짜'];
     const rowsToWrite = data.map(row => [
         row['단지번호'],
@@ -100,7 +88,6 @@ async function updateSummarySheet(data) {
       values: [header, ...rowsToWrite],
     };
 
-    // 3. 준비된 모든 데이터를 시트에 한 번에 추가합니다.
     await sheets.spreadsheets.values.append({
       spreadsheetId,
       range: `${summarySheetName}!A1`,
@@ -108,10 +95,10 @@ async function updateSummarySheet(data) {
       resource,
     });
 
-    console.log(`Successfully updated '수집요약' sheet with ${data.length} rows.`);
+    logger.info(`Successfully updated ${summarySheetName} with ${data.length} rows.`);
 
   } catch (error) {
-    console.error('Error writing to Google Sheets with googleapis:', error.message);
+    logger.error('Error writing to Google Sheets:', error);
     throw error;
   }
 }

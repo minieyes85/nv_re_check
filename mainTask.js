@@ -1,3 +1,5 @@
+const path = require('path');
+const logger = require('./logger').child({ label: path.basename(__filename) });
 const { pool } = require('./database');
 const { getComplexNumbers, updateSummarySheet } = require('./googleSheets');
 const { fetchAptArticles } = require('./naverApi');
@@ -13,14 +15,14 @@ async function runComplexLoad() {
   await sendMessage(`[${today}] 네이버 부동산 데이터 수집 작업을 시작합니다.`);
   let connection;
   try {
-    console.log('Starting complex load process...');
+    logger.info('Starting complex load process...');
     
     // 1. Get complex numbers from Google Sheets
     const complexNumbers = await getComplexNumbers();
     // const complexNumbers = ['1138']; // For testing a single complex
 
     if (!complexNumbers || complexNumbers.length === 0) {
-      console.log('No complex numbers to process.');
+      logger.warn('No complex numbers to process.');
       await sendMessage('처리할 단지 목록이 없습니다.');
       return 'success';
     }
@@ -33,7 +35,7 @@ async function runComplexLoad() {
 
     // 2. Get DB connection
     connection = await pool.getConnection();
-    console.log('Database connection acquired.');
+    logger.info('Database connection acquired.');
 
     const current_date = new Date().toISOString().slice(0, 10);
     const current_time = new Date().toTimeString().slice(0, 8);
@@ -41,14 +43,14 @@ async function runComplexLoad() {
     // 3. Iterate through each complex number
     for (const [index, complexNo] of complexNumbers.entries()) {
       try {
-        console.log(`\nProcessing complex ${complexNo} (${index + 1}/${complexNumbers.length})`);
+        logger.info(`Processing complex ${complexNo} (${index + 1}/${complexNumbers.length})`);
         await sleep(2000); // To avoid overwhelming the API
 
         // 4. Fetch articles from Naver API
         const articles = await fetchAptArticles(complexNo);
 
         if (!articles || articles.length === 0) {
-          console.log(`No articles found for complex ${complexNo}.`);
+          logger.info(`No articles found for complex ${complexNo}.`);
           continue;
         }
 
@@ -77,7 +79,7 @@ async function runComplexLoad() {
           });
 
         if (listingsToInsert.length === 0) {
-          console.log(`No relevant (매매, 전세) articles found for complex ${complexNo}.`);
+          logger.info(`No relevant (매매, 전세) articles found for complex ${complexNo}.`);
           continue;
         }
 
@@ -90,27 +92,27 @@ async function runComplexLoad() {
           VALUES ?;
         `;
         await connection.query(sql, [listingsToInsert]);
-        console.log(`Successfully inserted ${listingsToInsert.length} listings for complex ${complexNo}.`);
+        logger.info(`Successfully inserted ${listingsToInsert.length} listings for complex ${complexNo}.`);
         
         // Increment counters
         processedComplexCount++;
         totalListingsCount += listingsToInsert.length;
 
       } catch (error) {
-        console.error(`Error processing complex ${complexNo}:`, error);
+        logger.error(`Error processing complex ${complexNo}:`, error);
         await sleep(5000); // Wait longer if an error occurs
         continue; // Continue to the next complex number
       }
     }
 
     // 7. Get summary data from DB view
-    console.log('\nFetching summary data from sumToday view...');
+    logger.info('Fetching summary data from sumToday view...');
     const [summaryRows] = await connection.query(`
       SELECT complexNo, tradeTypeName, maxPrice, minPrice, areaName, date 
       FROM sumToday
     `);
     
-    console.log(`Found ${summaryRows.length} summary rows.`);
+    logger.info(`Found ${summaryRows.length} summary rows.`);
 
     if (summaryRows.length > 0) {
         // 8. Map data for Google Sheets
@@ -141,11 +143,11 @@ async function runComplexLoad() {
 
     await sendMessage(summaryMessage);
 
-    console.log('Complex load process finished successfully.');
+    logger.info('Complex load process finished successfully.');
     return 'success';
 
   } catch (error) {
-    console.error('The entire complex load process failed:', error);
+    logger.error('The entire complex load process failed:', error);
     const endTime = new Date();
     const durationInSeconds = Math.round((endTime - startTime) / 1000);
     const durationFormatted = formatDuration(durationInSeconds);
@@ -154,7 +156,7 @@ async function runComplexLoad() {
   } finally {
     if (connection) {
       connection.release();
-      console.log('Database connection released.');
+      logger.info('Database connection released.');
     }
   }
 }

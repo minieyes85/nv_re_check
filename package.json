@@ -17,6 +17,7 @@
     "gaxios": "^7.1.2",
     "google-auth-library": "^10.3.0",
     "googleapis": "^160.0.0",
-    "mysql2": "^3.15.1"
+    "mysql2": "^3.15.1",
+    "winston": "^3.18.3"
   }
 }
