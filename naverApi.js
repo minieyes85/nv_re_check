@@ -10,13 +10,13 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
  * @param {string} complexNo - 아파트 단지 번호
  * @returns {Promise<Array>} 매물 목록 Promise
  */
-async function fetchAptArticles(complexNo) {
+async function fetchAptArticles(complexNo, auth) {
   const baseUrl = `https://new.land.naver.com/api/articles/complex/${complexNo}`;
   const headers = {
     'accept': '*/*',
     'accept-language': 'ko,ko-KR;q=0.9,en-US;q=0.8,en;q=0.7',
-    'authorization': process.env.NAVER_API_AUTHORIZATION,
-    'cookie': process.env.NAVER_API_COOKIE,
+    'authorization': auth.authorization,
+    'cookie': auth.cookie,
     'referer': `https://new.land.naver.com/complexes/${complexNo}`,
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
   };
